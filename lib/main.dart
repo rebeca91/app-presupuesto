@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'models/budget_item.dart';
+import 'models/movimiento.dart';
 
 
 void main() {
@@ -39,19 +40,7 @@ class BudgetApp extends StatelessWidget {
 
 
 
-class Movimiento {
-  final String categoria;
-  final double monto;
-  final DateTime fecha;
-  final String metodoPago;
 
-  Movimiento({
-    required this.categoria,
-    required this.monto,
-    required this.fecha,
-    required this.metodoPago,
-  });
-}
 
 class Ingreso {
   final double monto;
