@@ -6,6 +6,7 @@ import 'models/budget_item.dart';
 import 'models/movimiento.dart';
 import 'models/ingreso.dart';
 import 'models/tarjeta_credito.dart';
+import 'models/resumen_mensual.dart';
 
 
 void main() {
@@ -43,34 +44,6 @@ class BudgetApp extends StatelessWidget {
 
 
 
-
-
-
-
-
-class ResumenMensual {
-  final String mes;
-  final double gastado;
-  final double disponible;
-
-  ResumenMensual({
-    required this.mes,
-    required this.gastado,
-    required this.disponible,
-  });
-
-  factory ResumenMensual.fromMap(Map<String, dynamic> map) {
-    return ResumenMensual(
-      mes: map['mes'] as String,
-      gastado: (map['gastado'] as num).toDouble(),
-      disponible: (map['disponible'] as num).toDouble(),
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {'mes': mes, 'gastado': gastado, 'disponible': disponible};
-  }
-}
 
 class BudgetHomePage extends StatefulWidget {
   const BudgetHomePage({super.key});
