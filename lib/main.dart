@@ -58,6 +58,8 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
   static const _metaAhorroStorageKey = 'metaAhorro';
   static const _legacyIngresoMensualStorageKey = 'ingresoMensual';
 
+  final StorageService _storageService = StorageService();
+
   final List<Ingreso> ingresos = [];
   double _ingresoMensualManual = 0;
 
@@ -150,28 +152,6 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
   final List<Movimiento> movimientos = [];
   final List<ResumenMensual> historial = [];
 
-  Future<void> guardarDatos() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _itemsStorageKey,
-      jsonEncode(items.map((item) => item.toMap()).toList()),
-    );
-    await prefs.setDouble(_ingresoMensualStorageKey, _ingresoMensualManual);
-    await prefs.setString(
-      _ingresosStorageKey,
-      jsonEncode(ingresos.map((ingreso) => ingreso.toMap()).toList()),
-    );
-    await prefs.setString(
-      _tarjetasStorageKey,
-      jsonEncode(tarjetas.map((tarjeta) => tarjeta.toMap()).toList()),
-    );
-    await prefs.setDouble(_metaAhorroStorageKey, metaAhorro);
-
-    await prefs.setString(
-      _historialStorageKey,
-      jsonEncode(historial.map((item) => item.toMap()).toList()),
-    );
-  }
 
   Future<void> cargarDatos() async {
     final prefs = await SharedPreferences.getInstance();
@@ -258,7 +238,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   _ingresoMensualManual = nuevoIngreso;
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+                items: items,
+                ingresos: ingresos,
+                tarjetas: tarjetas,
+                historial: historial,
+                ingresoMensual: _ingresoMensualManual,
+                metaAhorro: metaAhorro,
+                );
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -329,7 +316,15 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   metaAhorro = nuevaMeta;
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+  items: items,
+  ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
+
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -389,7 +384,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   items.add(BudgetItem(categoria: nombre, presupuesto: monto));
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+                  items: items,
+              ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -452,7 +454,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   item.presupuesto = monto;
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+  items: items,
+  ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -481,7 +490,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   items.remove(item);
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+  items: items,
+  ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
                 Navigator.pop(context);
               },
               child: const Text('Eliminar'),
@@ -576,7 +592,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   );
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+  items: items,
+  ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -621,7 +644,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   tarjeta.saldoActual = nuevoSaldo;
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+  items: items,
+  ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -650,7 +680,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   tarjetas.remove(tarjeta);
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+  items: items,
+  ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
                 Navigator.pop(context);
               },
               child: const Text('Eliminar'),
@@ -702,7 +739,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   tarjeta.saldoActual -= monto;
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+  items: items,
+  ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
                 Navigator.pop(context);
               },
               child: const Text('Registrar pago'),
@@ -750,7 +794,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   movimientos.clear();
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+  items: items,
+  ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
                 Navigator.pop(context);
               },
               child: const Text('Reiniciar'),
@@ -892,7 +943,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   );
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+  items: items,
+  ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -1068,7 +1126,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                       );
                     });
 
-                    guardarDatos();
+                _storageService.guardarDatos(
+  items: items,
+  ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
                     Navigator.pop(context);
                   },
                   child: const Text('Guardar'),
@@ -1130,7 +1195,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   );
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+  items: items,
+  ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -1161,7 +1233,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   ingresos.remove(ingreso);
                 });
 
-                guardarDatos();
+                _storageService.guardarDatos(
+  items: items,
+  ingresos: ingresos,
+  tarjetas: tarjetas,
+  historial: historial,
+  ingresoMensual: _ingresoMensualManual,
+  metaAhorro: metaAhorro,
+);
                 Navigator.pop(context);
               },
               child: const Text('Eliminar'),
