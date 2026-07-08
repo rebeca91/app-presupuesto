@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'models/budget_item.dart';
 import 'models/movimiento.dart';
 import 'models/ingreso.dart';
 import 'models/tarjeta_credito.dart';
 import 'models/resumen_mensual.dart';
 import 'services/storage_service.dart';
+import 'models/app_data.dart';
+import 'widgets/categoria_card.dart';
+import 'widgets/grafica_gastos.dart';
+import 'widgets/tarjeta_card.dart';
 
 void main() {
   runApp(const BudgetApp());
@@ -41,7 +42,6 @@ class BudgetApp extends StatelessWidget {
   }
 }
 
-
 class BudgetHomePage extends StatefulWidget {
   const BudgetHomePage({super.key});
 
@@ -50,14 +50,6 @@ class BudgetHomePage extends StatefulWidget {
 }
 
 class _BudgetHomePageState extends State<BudgetHomePage> {
-  static const _itemsStorageKey = 'items';
-  static const _historialStorageKey = 'historial';
-  static const _ingresoMensualStorageKey = 'ingresoMensualManual';
-  static const _ingresosStorageKey = 'ingresos';
-  static const _tarjetasStorageKey = 'tarjetas';
-  static const _metaAhorroStorageKey = 'metaAhorro';
-  static const _legacyIngresoMensualStorageKey = 'ingresoMensual';
-
   final StorageService _storageService = StorageService();
 
   final List<Ingreso> ingresos = [];
@@ -152,55 +144,27 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
   final List<Movimiento> movimientos = [];
   final List<ResumenMensual> historial = [];
 
-
   Future<void> cargarDatos() async {
-    final prefs = await SharedPreferences.getInstance();
-    _ingresoMensualManual =
-        prefs.getDouble(_ingresoMensualStorageKey) ??
-        prefs.getDouble(_legacyIngresoMensualStorageKey) ??
-        0;
-    metaAhorro = prefs.getDouble(_metaAhorroStorageKey) ?? 0;
+    final AppData datos = await _storageService.cargarDatos();
 
-    final texto = prefs.getString(_itemsStorageKey);
-    final historialTexto = prefs.getString(_historialStorageKey);
-    final ingresosTexto = prefs.getString(_ingresosStorageKey);
-    final tarjetasTexto = prefs.getString(_tarjetasStorageKey);
+    _ingresoMensualManual = datos.ingresoMensual;
+    metaAhorro = datos.metaAhorro;
 
-    if (texto != null) {
-      final data = (jsonDecode(texto) as List)
-          .map((item) => BudgetItem.fromMap(Map<String, dynamic>.from(item)))
-          .toList();
-      items.clear();
-      items.addAll(data);
-    }
+    items
+      ..clear()
+      ..addAll(datos.items);
 
-    if (historialTexto != null) {
-      final historialData = (jsonDecode(historialTexto) as List)
-          .map(
-            (item) => ResumenMensual.fromMap(Map<String, dynamic>.from(item)),
-          )
-          .toList();
-      historial.clear();
-      historial.addAll(historialData);
-    }
+    historial
+      ..clear()
+      ..addAll(datos.historial);
 
-    if (ingresosTexto != null) {
-      final ingresosData = (jsonDecode(ingresosTexto) as List)
-          .map((item) => Ingreso.fromMap(Map<String, dynamic>.from(item)))
-          .toList();
-      ingresos.clear();
-      ingresos.addAll(ingresosData);
-    }
+    ingresos
+      ..clear()
+      ..addAll(datos.ingresos);
 
-    if (tarjetasTexto != null) {
-      final tarjetasData = (jsonDecode(tarjetasTexto) as List)
-          .map(
-            (item) => TarjetaCredito.fromMap(Map<String, dynamic>.from(item)),
-          )
-          .toList();
-      tarjetas.clear();
-      tarjetas.addAll(tarjetasData);
-    }
+    tarjetas
+      ..clear()
+      ..addAll(datos.tarjetas);
 
     if (!mounted) return;
     setState(() {});
@@ -239,12 +203,12 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 });
 
                 _storageService.guardarDatos(
-                items: items,
-                ingresos: ingresos,
-                tarjetas: tarjetas,
-                historial: historial,
-                ingresoMensual: _ingresoMensualManual,
-                metaAhorro: metaAhorro,
+                  items: items,
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
                 );
                 Navigator.pop(context);
               },
@@ -317,13 +281,13 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 });
 
                 _storageService.guardarDatos(
-  items: items,
-  ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                  items: items,
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
+                );
 
                 Navigator.pop(context);
               },
@@ -386,12 +350,12 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
 
                 _storageService.guardarDatos(
                   items: items,
-              ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
+                );
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -455,13 +419,13 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 });
 
                 _storageService.guardarDatos(
-  items: items,
-  ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                  items: items,
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
+                );
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -491,13 +455,13 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 });
 
                 _storageService.guardarDatos(
-  items: items,
-  ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                  items: items,
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
+                );
                 Navigator.pop(context);
               },
               child: const Text('Eliminar'),
@@ -593,13 +557,13 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 });
 
                 _storageService.guardarDatos(
-  items: items,
-  ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                  items: items,
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
+                );
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -645,13 +609,13 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 });
 
                 _storageService.guardarDatos(
-  items: items,
-  ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                  items: items,
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
+                );
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -681,13 +645,13 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 });
 
                 _storageService.guardarDatos(
-  items: items,
-  ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                  items: items,
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
+                );
                 Navigator.pop(context);
               },
               child: const Text('Eliminar'),
@@ -740,13 +704,13 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 });
 
                 _storageService.guardarDatos(
-  items: items,
-  ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                  items: items,
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
+                );
                 Navigator.pop(context);
               },
               child: const Text('Registrar pago'),
@@ -795,13 +759,13 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 });
 
                 _storageService.guardarDatos(
-  items: items,
-  ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                  items: items,
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
+                );
                 Navigator.pop(context);
               },
               child: const Text('Reiniciar'),
@@ -813,15 +777,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
   }
 
   Future<void> reiniciarTodosLosDatos() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.remove(_itemsStorageKey);
-    await prefs.remove(_historialStorageKey);
-    await prefs.remove(_ingresoMensualStorageKey);
-    await prefs.remove(_ingresosStorageKey);
-    await prefs.remove(_tarjetasStorageKey);
-    await prefs.remove(_metaAhorroStorageKey);
-    await prefs.remove(_legacyIngresoMensualStorageKey);
+    await _storageService.reiniciarTodosLosDatos();
 
     if (!mounted) return;
 
@@ -944,13 +900,13 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 });
 
                 _storageService.guardarDatos(
-  items: items,
-  ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                  items: items,
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
+                );
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -1126,14 +1082,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                       );
                     });
 
-                _storageService.guardarDatos(
-  items: items,
-  ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                    _storageService.guardarDatos(
+                      items: items,
+                      ingresos: ingresos,
+                      tarjetas: tarjetas,
+                      historial: historial,
+                      ingresoMensual: _ingresoMensualManual,
+                      metaAhorro: metaAhorro,
+                    );
                     Navigator.pop(context);
                   },
                   child: const Text('Guardar'),
@@ -1196,13 +1152,13 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 });
 
                 _storageService.guardarDatos(
-  items: items,
-  ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                  items: items,
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
+                );
                 Navigator.pop(context);
               },
               child: const Text('Guardar'),
@@ -1234,13 +1190,13 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 });
 
                 _storageService.guardarDatos(
-  items: items,
-  ingresos: ingresos,
-  tarjetas: tarjetas,
-  historial: historial,
-  ingresoMensual: _ingresoMensualManual,
-  metaAhorro: metaAhorro,
-);
+                  items: items,
+                  ingresos: ingresos,
+                  tarjetas: tarjetas,
+                  historial: historial,
+                  ingresoMensual: _ingresoMensualManual,
+                  metaAhorro: metaAhorro,
+                );
                 Navigator.pop(context);
               },
               child: const Text('Eliminar'),
@@ -1248,82 +1204,6 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
           ],
         );
       },
-    );
-  }
-
-  Widget graficaGastos() {
-    final gastos = items.where((item) => item.real > 0).toList();
-
-    if (gastos.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final colores = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.red,
-      Colors.teal,
-      Colors.pink,
-    ];
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 220,
-              child: PieChart(
-                PieChartData(
-                  sections: gastos.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final item = entry.value;
-
-                    return PieChartSectionData(
-                      value: item.real,
-                      title: '\$${item.real.toStringAsFixed(0)}',
-                      color: colores[index % colores.length],
-                      radius: 75,
-                      titleStyle: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ...gastos.asMap().entries.map((entry) {
-              final index = entry.key;
-              final item = entry.value;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: colores[index % colores.length],
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(item.categoria)),
-                    Text('\$${item.real.toStringAsFixed(2)}'),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1481,67 +1361,17 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          graficaGastos(),
+          GraficaGastos(items: items),
           const SizedBox(height: 16),
           const Text(
             'Categorías',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           ...items.map((item) {
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          item.categoria,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '\$${item.real.toStringAsFixed(2)} / \$${item.presupuesto.toStringAsFixed(2)}',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    LinearProgressIndicator(
-                      value: item.presupuesto <= 0
-                          ? 0
-                          : (item.real / item.presupuesto).clamp(0, 1),
-                      minHeight: 8,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Restante: \$${(item.presupuesto - item.real).toStringAsFixed(2)}',
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: () => editarCategoria(item),
-                              icon: const Icon(Icons.edit),
-                            ),
-                            IconButton(
-                              onPressed: () => eliminarCategoria(item),
-                              icon: const Icon(Icons.delete),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+            return CategoriaCard(
+              item: item,
+              onEditar: () => editarCategoria(item),
+              onEliminar: () => eliminarCategoria(item),
             );
           }),
 
@@ -1562,67 +1392,11 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
             ),
 
           ...tarjetas.map((tarjeta) {
-            final disponibleTarjeta = tarjeta.limite - tarjeta.saldoActual;
-
-            return Card(
-              margin: const EdgeInsets.only(top: 8),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            tarjeta.nombre,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        Text('\$${tarjeta.saldoActual.toStringAsFixed(2)}'),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    LinearProgressIndicator(
-                      value: tarjeta.limite <= 0
-                          ? 0
-                          : (tarjeta.saldoActual / tarjeta.limite).clamp(0, 1),
-                      minHeight: 8,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Disponible: \$${disponibleTarjeta.toStringAsFixed(2)} de \$${tarjeta.limite.toStringAsFixed(2)}',
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Corte: dia ${tarjeta.diaCorte}  Pago: dia ${tarjeta.diaPago}',
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => ajustarSaldoTarjeta(tarjeta),
-                          child: const Text('Ajustar saldo'),
-                        ),
-                        TextButton(
-                          onPressed: () => registrarPagoTarjeta(tarjeta),
-                          child: const Text('Pagar'),
-                        ),
-                        IconButton(
-                          onPressed: () => eliminarTarjeta(tarjeta),
-                          icon: const Icon(Icons.delete),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+            return TarjetaCard(
+              tarjeta: tarjeta,
+              onAjustarSaldo: () => ajustarSaldoTarjeta(tarjeta),
+              onPagar: () => registrarPagoTarjeta(tarjeta),
+              onEliminar: () => eliminarTarjeta(tarjeta),
             );
           }),
 
