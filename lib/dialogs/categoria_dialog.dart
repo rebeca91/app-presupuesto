@@ -37,7 +37,7 @@ Future<CategoriaDialogResult?> showCategoriaDialog({
             TextField(
               controller: montoController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Presupuesto'),
+              decoration: const InputDecoration(labelText: ''),
             ),
           ],
         ),

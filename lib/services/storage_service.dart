@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/budget_item.dart';
 import '../models/ingreso.dart';
+import '../models/movimiento.dart';
 import '../models/tarjeta_credito.dart';
 import '../models/resumen_mensual.dart';
 import '../models/app_data.dart';
@@ -15,6 +16,7 @@ class StorageService {
   static const _metaAhorroStorageKey = 'metaAhorro';
   static const _tarjetasStorageKey = 'tarjetas';
   static const _ingresosStorageKey = 'ingresos';
+  static const _movimientosStorageKey = 'movimientos';
   static const _legacyIngresoStorageKey = 'ingresoMensual';
 
   Future<void> reiniciarTodosLosDatos() async {
@@ -24,6 +26,7 @@ class StorageService {
     await prefs.remove(_historialStorageKey);
     await prefs.remove(_ingresoStorageKey);
     await prefs.remove(_ingresosStorageKey);
+    await prefs.remove(_movimientosStorageKey);
     await prefs.remove(_tarjetasStorageKey);
     await prefs.remove(_metaAhorroStorageKey);
     await prefs.remove(_legacyIngresoStorageKey);
@@ -36,6 +39,7 @@ class StorageService {
     required List<ResumenMensual> historial,
     required double ingresoMensual,
     required double metaAhorro,
+    List<Movimiento>? movimientos,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -50,6 +54,15 @@ class StorageService {
       _ingresosStorageKey,
       jsonEncode(ingresos.map((ingreso) => ingreso.toMap()).toList()),
     );
+
+    if (movimientos != null) {
+      await prefs.setString(
+        _movimientosStorageKey,
+        jsonEncode(
+          movimientos.map((movimiento) => movimiento.toMap()).toList(),
+        ),
+      );
+    }
 
     await prefs.setString(
       _tarjetasStorageKey,
@@ -77,6 +90,7 @@ class StorageService {
     final itemsTexto = prefs.getString(_itemsStorageKey);
     final historialTexto = prefs.getString(_historialStorageKey);
     final ingresosTexto = prefs.getString(_ingresosStorageKey);
+    final movimientosTexto = prefs.getString(_movimientosStorageKey);
     final tarjetasTexto = prefs.getString(_tarjetasStorageKey);
 
     final List<BudgetItem> items = [];
@@ -109,6 +123,17 @@ class StorageService {
       );
     }
 
+    final List<Movimiento> movimientos = [];
+
+    if (movimientosTexto != null) {
+      movimientos.addAll(
+        (jsonDecode(movimientosTexto) as List).map(
+          (movimiento) =>
+              Movimiento.fromMap(Map<String, dynamic>.from(movimiento)),
+        ),
+      );
+    }
+
     final List<TarjetaCredito> tarjetas = [];
 
     if (tarjetasTexto != null) {
@@ -122,6 +147,7 @@ class StorageService {
     return AppData(
       items: items,
       historial: historial,
+      movimientos: movimientos,
       ingresos: ingresos,
       tarjetas: tarjetas,
       ingresoMensual: ingresoMensual,

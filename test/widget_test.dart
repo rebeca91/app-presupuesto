@@ -12,7 +12,7 @@ void main() {
     await tester.pumpWidget(const BudgetApp());
     await tester.pump();
 
-    expect(find.text('Mi Presupuesto'), findsOneWidget);
+    expect(find.text('BFINANCE'), findsOneWidget);
     expect(find.text('Disponible'), findsOneWidget);
     expect(find.text('Categorías'), findsOneWidget);
   });

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
+import 'services/notificaciones_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificacionesService().inicializar();
   runApp(const BudgetApp());
 }
 

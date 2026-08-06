@@ -7,19 +7,19 @@ class TarjetaCard extends StatelessWidget {
     super.key,
     required this.tarjeta,
     required this.onAjustarSaldo,
+    required this.onGenerarCorte,
     required this.onPagar,
     required this.onEliminar,
   });
 
   final TarjetaCredito tarjeta;
   final VoidCallback onAjustarSaldo;
+  final VoidCallback onGenerarCorte;
   final VoidCallback onPagar;
   final VoidCallback onEliminar;
 
   @override
   Widget build(BuildContext context) {
-    final disponibleTarjeta = tarjeta.limite - tarjeta.saldoActual;
-
     return Card(
       margin: const EdgeInsets.only(top: 8),
       child: Padding(
@@ -39,7 +39,10 @@ class TarjetaCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text('\$${tarjeta.saldoActual.toStringAsFixed(2)}'),
+                Text(
+                  '\$${tarjeta.saldoActual.toStringAsFixed(2)}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -52,19 +55,38 @@ class TarjetaCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Disponible: \$${disponibleTarjeta.toStringAsFixed(2)} de \$${tarjeta.limite.toStringAsFixed(2)}',
+              'Credito disponible: \$${tarjeta.creditoDisponible.toStringAsFixed(2)} de \$${tarjeta.limite.toStringAsFixed(2)}',
             ),
+            const SizedBox(height: 4),
+            Text('Saldo actual: \$${tarjeta.saldoActual.toStringAsFixed(2)}'),
+            const SizedBox(height: 4),
+            Text(
+              'Saldo ultimo corte: \$${tarjeta.saldoUltimoCorte.toStringAsFixed(2)}',
+            ),
+            const SizedBox(height: 4),
+            Text('Consumo nuevo: \$${tarjeta.consumoNuevo.toStringAsFixed(2)}'),
             const SizedBox(height: 4),
             Text(
               'Corte: dia ${tarjeta.diaCorte}  Pago: dia ${tarjeta.diaPago}',
             ),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Text(
+              tarjeta.recordatoriosActivos
+                  ? 'Recordatorio de pago: ${tarjeta.diasAnticipacionPago == 0 ? 'el mismo día' : '${tarjeta.diasAnticipacionPago} ${tarjeta.diasAnticipacionPago == 1 ? 'día' : 'días'} antes'} · 9:00 a. m.'
+                  : 'Recordatorios desactivados',
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              alignment: WrapAlignment.end,
               children: [
                 TextButton(
                   onPressed: onAjustarSaldo,
                   child: const Text('Ajustar saldo'),
+                ),
+                TextButton(
+                  onPressed: onGenerarCorte,
+                  child: const Text('Generar corte'),
                 ),
                 TextButton(onPressed: onPagar, child: const Text('Pagar')),
                 IconButton(

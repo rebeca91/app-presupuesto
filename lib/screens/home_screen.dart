@@ -8,8 +8,10 @@ import '../models/budget_item.dart';
 import '../models/ingreso.dart';
 import '../models/movimiento.dart';
 import '../models/resumen_mensual.dart';
+import '../models/resumen_financiero.dart';
 import '../models/tarjeta_credito.dart';
 import '../services/storage_service.dart';
+import '../services/notificaciones_service.dart';
 import '../widgets/categoria_card.dart';
 import '../widgets/grafica_gastos.dart';
 import '../widgets/tarjeta_card.dart';
@@ -23,6 +25,7 @@ class BudgetHomePage extends StatefulWidget {
 
 class _BudgetHomePageState extends State<BudgetHomePage> {
   final StorageService _storageService = StorageService();
+  final NotificacionesService _notificacionesService = NotificacionesService();
 
   final List<Ingreso> ingresos = [];
   double _ingresoMensualManual = 0;
@@ -40,7 +43,11 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
   double get totalGastado =>
       items.fold<double>(0, (sum, item) => sum + item.real);
 
-  double get disponibleActual => ingresoMensual - totalGastado - metaAhorro;
+  double get disponibleActual => ResumenFinanciero.efectivoDisponible(
+    ingresos: ingresoMensual,
+    reservaMensual: metaAhorro,
+    movimientos: movimientos,
+  );
 
   bool _esNombreReservadoParaReserva(String nombre) {
     final normalizado = nombre.trim().toLowerCase();
@@ -54,7 +61,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     return nombresReservados.contains(normalizado);
   }
 
-  List<BudgetItem> _crearCategoriasIniciales() {
+  static List<BudgetItem> _crearCategoriasIniciales() {
     return [
       BudgetItem(categoria: 'Casa', presupuesto: 100.00, nota: 'Pago fijo'),
       BudgetItem(
@@ -84,33 +91,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     ];
   }
 
-  final List<BudgetItem> items = [
-    BudgetItem(categoria: 'Casa', presupuesto: 100.00, nota: 'Pago fijo'),
-    BudgetItem(
-      categoria: 'Préstamo Banco Cuscatlán',
-      presupuesto: 139.62,
-      nota: 'Descuento planilla',
-    ),
-    BudgetItem(
-      categoria: 'Tarjetas',
-      presupuesto: 120.00,
-      nota: 'No financiar saldo',
-    ),
-    BudgetItem(categoria: 'Gas / Transporte', presupuesto: 60.00),
-    BudgetItem(categoria: 'Mascota', presupuesto: 20.00),
-    BudgetItem(categoria: 'Personal', presupuesto: 40.00),
-    BudgetItem(categoria: 'Servicios varios', presupuesto: 20.00),
-    BudgetItem(
-      categoria: 'Ahorro colchón',
-      presupuesto: 70.00,
-      nota: 'Hasta llegar a \$500',
-    ),
-    BudgetItem(
-      categoria: 'Margen libre',
-      presupuesto: -58.19,
-      nota: 'Ajustar gastos variables',
-    ),
-  ];
+  final List<BudgetItem> items = _crearCategoriasIniciales();
 
   final List<TarjetaCredito> tarjetas = [];
   final List<Movimiento> movimientos = [];
@@ -126,9 +107,23 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
       ..clear()
       ..addAll(datos.items);
 
+    // Un pago de tarjeta no se añade como gasto de presupuesto: la compra ya
+    // está en su categoría. Sí se descuenta del efectivo disponible cuando
+    // se paga en efectivo, a partir de su movimiento.
+    final cantidadCategoriasAntesDeLimpiar = items.length;
+    items.removeWhere(
+      (item) => item.categoria == 'Pago de tarjetas' && item.presupuesto == 0,
+    );
+    final seEliminoPagoDeTarjetaGenerado =
+        items.length != cantidadCategoriasAntesDeLimpiar;
+
     historial
       ..clear()
       ..addAll(datos.historial);
+
+    movimientos
+      ..clear()
+      ..addAll(datos.movimientos);
 
     ingresos
       ..clear()
@@ -137,6 +132,16 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     tarjetas
       ..clear()
       ..addAll(datos.tarjetas);
+
+    final seGeneraronCortes = _generarCortesPendientes();
+
+    for (final tarjeta in tarjetas) {
+      await _notificacionesService.programarRecordatorios(tarjeta);
+    }
+
+    if (seGeneraronCortes || seEliminoPagoDeTarjetaGenerado) {
+      await _guardarDatos();
+    }
 
     if (!mounted) return;
     setState(() {});
@@ -150,7 +155,30 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
       historial: historial,
       ingresoMensual: _ingresoMensualManual,
       metaAhorro: metaAhorro,
+      movimientos: movimientos,
     );
+  }
+
+  bool _generarCortesPendientes() {
+    final ahora = DateTime.now();
+    var seGeneroCorte = false;
+
+    for (final tarjeta in tarjetas) {
+      if (!tarjeta.debeGenerarCorteAutomatico(ahora)) continue;
+      tarjeta.generarCorte(fecha: ahora);
+      seGeneroCorte = true;
+    }
+
+    return seGeneroCorte;
+  }
+
+  void _normalizarCategorias() {
+    for (final item in items) {
+      if (item.categoria == 'Ahorro colchÃ³n' ||
+          item.categoria == 'Ahorro colchón') {
+        item.categoria = 'Fondo colchon';
+      }
+    }
   }
 
   void editarIngreso() {
@@ -192,6 +220,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   historial: historial,
                   ingresoMensual: _ingresoMensualManual,
                   metaAhorro: metaAhorro,
+                  movimientos: movimientos,
                 );
                 Navigator.pop(context);
               },
@@ -207,20 +236,10 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
   void initState() {
     super.initState();
 
-    for (final item in items) {
-      if (item.categoria == 'Ahorro colchÃ³n' ||
-          item.categoria == 'Ahorro colchón') {
-        item.categoria = 'Fondo colchon';
-      }
-    }
+    _normalizarCategorias();
 
     cargarDatos().then((_) {
-      for (final item in items) {
-        if (item.categoria == 'Ahorro colchÃ³n' ||
-            item.categoria == 'Ahorro colchón') {
-          item.categoria = 'Fondo colchon';
-        }
-      }
+      _normalizarCategorias();
 
       if (ingresoMensual == 0) {
         Future.delayed(Duration.zero, () {
@@ -270,6 +289,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   historial: historial,
                   ingresoMensual: _ingresoMensualManual,
                   metaAhorro: metaAhorro,
+                  movimientos: movimientos,
                 );
 
                 Navigator.pop(context);
@@ -364,6 +384,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
       tarjetas.add(tarjeta);
     });
 
+    await _notificacionesService.programarRecordatorios(tarjeta);
     await _guardarDatos();
   }
 
@@ -382,6 +403,13 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     await _guardarDatos();
   }
 
+  Future<void> generarCorteTarjeta(TarjetaCredito tarjeta) async {
+    setState(() {
+      tarjeta.generarCorte();
+    });
+    await _guardarDatos();
+  }
+
   void eliminarTarjeta(TarjetaCredito tarjeta) {
     showDialog(
       context: context,
@@ -396,6 +424,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
             ),
             FilledButton(
               onPressed: () {
+                _notificacionesService.cancelarRecordatorios(tarjeta);
                 setState(() {
                   tarjetas.remove(tarjeta);
                 });
@@ -426,15 +455,26 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
       return;
     }
 
-    final monto = await showRegistrarPagoTarjetaDialog(
+    final pago = await showRegistrarPagoTarjetaDialog(
       context: context,
       tarjeta: tarjeta,
+      tarjetas: tarjetas,
     );
 
-    if (monto == null) return;
+    if (pago == null) return;
 
     setState(() {
-      tarjeta.saldoActual -= monto;
+      tarjeta.registrarPago(pago.monto);
+      pago.tarjetaPago?.saldoActual += pago.monto;
+      movimientos.insert(
+        0,
+        Movimiento(
+          categoria: 'Pago de ${tarjeta.nombre}',
+          monto: pago.monto,
+          fecha: DateTime.now(),
+          metodoPago: pago.tarjetaPago?.nombre ?? 'Efectivo',
+        ),
+      );
     });
 
     await _guardarDatos();
@@ -484,6 +524,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   historial: historial,
                   ingresoMensual: _ingresoMensualManual,
                   metaAhorro: metaAhorro,
+                  movimientos: movimientos,
                 );
                 Navigator.pop(context);
               },
@@ -497,6 +538,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
 
   Future<void> reiniciarTodosLosDatos() async {
     await _storageService.reiniciarTodosLosDatos();
+    await _notificacionesService.cancelarTodosLosRecordatorios();
 
     if (!mounted) return;
 
@@ -734,10 +776,17 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0F172A),
         centerTitle: false,
-        title: const Text(
-          'Mi Presupuesto',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+            Image.asset('assets/images/Logo.png', width: 32, height: 32),
+            const SizedBox(width: 10),
+            const Text(
+              'BFINANCE',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+          ],
         ),
+
         actions: [
           IconButton(
             onPressed: agregarIngreso,
@@ -913,6 +962,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
             return TarjetaCard(
               tarjeta: tarjeta,
               onAjustarSaldo: () => ajustarSaldoTarjeta(tarjeta),
+              onGenerarCorte: () => generarCorteTarjeta(tarjeta),
               onPagar: () => registrarPagoTarjeta(tarjeta),
               onEliminar: () => eliminarTarjeta(tarjeta),
             );
