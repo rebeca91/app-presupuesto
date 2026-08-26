@@ -118,11 +118,22 @@ class NotificacionesService {
 
   tz.TZDateTime _proximaFecha(int dia, {int anticipacionDias = 0}) {
     final ahora = tz.TZDateTime.now(tz.local);
-    var fecha = tz.TZDateTime(tz.local, ahora.year, ahora.month, dia, 9);
+    var fecha = _fechaConDiaValido(ahora.year, ahora.month, dia);
     if (!fecha.subtract(Duration(days: anticipacionDias)).isAfter(ahora)) {
-      fecha = tz.TZDateTime(tz.local, ahora.year, ahora.month + 1, dia, 9);
+      fecha = _fechaConDiaValido(ahora.year, ahora.month + 1, dia);
     }
     return fecha.subtract(Duration(days: anticipacionDias));
+  }
+
+  tz.TZDateTime _fechaConDiaValido(int year, int month, int dia) {
+    final ultimoDiaDelMes = DateTime(year, month + 1, 0).day;
+    return tz.TZDateTime(
+      tz.local,
+      year,
+      month,
+      dia.clamp(1, ultimoDiaDelMes),
+      9,
+    );
   }
 
   int _idNotificacion(TarjetaCredito tarjeta, int tipo) {

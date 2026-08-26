@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../dialogs/categoria_dialog.dart';
 import '../dialogs/gasto_dialog.dart';
@@ -12,6 +14,7 @@ import '../models/resumen_financiero.dart';
 import '../models/tarjeta_credito.dart';
 import '../services/storage_service.dart';
 import '../services/notificaciones_service.dart';
+import '../services/ticket_scanner_service.dart';
 import '../widgets/categoria_card.dart';
 import '../widgets/grafica_gastos.dart';
 import '../widgets/tarjeta_card.dart';
@@ -26,6 +29,7 @@ class BudgetHomePage extends StatefulWidget {
 class _BudgetHomePageState extends State<BudgetHomePage> {
   final StorageService _storageService = StorageService();
   final NotificacionesService _notificacionesService = NotificacionesService();
+  final TicketScannerService _ticketScannerService = TicketScannerService();
 
   final List<Ingreso> ingresos = [];
   double _ingresoMensualManual = 0;
@@ -103,9 +107,14 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     _ingresoMensualManual = datos.ingresoMensual;
     metaAhorro = datos.metaAhorro;
 
-    items
-      ..clear()
-      ..addAll(datos.items);
+    // En el primer inicio no existe la clave de categorías todavía: en ese
+    // caso se conservan las categorías iniciales. Una lista guardada vacía sí
+    // se respeta, porque puede ser una decisión del usuario.
+    if (datos.tieneItemsGuardados) {
+      items
+        ..clear()
+        ..addAll(datos.items);
+    }
 
     // Un pago de tarjeta no se añade como gasto de presupuesto: la compra ya
     // está en su categoría. Sí se descuenta del efectivo disponible cuando
@@ -397,7 +406,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     if (nuevoSaldo == null) return;
 
     setState(() {
-      tarjeta.saldoActual = nuevoSaldo;
+      tarjeta.ajustarSaldo(nuevoSaldo);
     });
 
     await _guardarDatos();
@@ -515,6 +524,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                   }
 
                   movimientos.clear();
+                  ingresos.clear();
                 });
 
                 _storageService.guardarDatos(
@@ -662,6 +672,102 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     await _guardarDatos();
   }
 
+  Future<void> escanearTicket() async {
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'El escaneo de tickets está disponible en Android y iOS.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final origen = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Tomar foto'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Elegir de la galería'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (origen == null || !mounted) return;
+
+    try {
+      final ticket = await _ticketScannerService.escanear(origen);
+      if (ticket == null || !mounted) return;
+
+      if (ticket.monto == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No pudimos detectar el total. Ingresa el monto manualmente.',
+            ),
+          ),
+        );
+      }
+
+      await mostrarFormularioGastoDesdeTicket(ticket.monto);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No fue posible leer el ticket. Intenta con una foto más clara.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> mostrarFormularioGastoDesdeTicket(double? montoInicial) async {
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Agrega una categoría antes de registrar un gasto.'),
+        ),
+      );
+      return;
+    }
+
+    final resultado = await showGastoDialog(
+      context: context,
+      categorias: items,
+      tarjetas: tarjetas,
+      montoInicial: montoInicial,
+    );
+    if (resultado == null) return;
+
+    setState(() {
+      resultado.categoria.real += resultado.monto;
+      resultado.tarjeta?.saldoActual += resultado.monto;
+      movimientos.insert(
+        0,
+        Movimiento(
+          categoria: resultado.categoria.categoria,
+          monto: resultado.monto,
+          fecha: DateTime.now(),
+          metodoPago: resultado.metodoPago,
+        ),
+      );
+    });
+    await _guardarDatos();
+  }
+
   void agregarIngreso() {
     final montoController = TextEditingController();
     final notaController = TextEditingController();
@@ -780,9 +886,11 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
           children: [
             Image.asset('assets/images/Logo.png', width: 32, height: 32),
             const SizedBox(width: 10),
-            const Text(
-              'BFINANCE',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            const Flexible(
+            child: Text(
+            'BFINANCE',
+            overflow: TextOverflow.ellipsis,
+            ),
             ),
           ],
         ),
@@ -792,22 +900,29 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
             onPressed: agregarIngreso,
             icon: const Icon(Icons.attach_money),
           ),
-          IconButton(
-            onPressed: agregarTarjeta,
-            icon: const Icon(Icons.credit_card),
-          ),
+          
           PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'mes') {
-                reiniciarMes();
-              }
+    onSelected: (value) {
+      if (value == 'tarjeta') {
+        agregarTarjeta();
+      }
 
-              if (value == 'todo') {
-                confirmarReinicioTotal();
-              }
-            },
+      if (value == 'ticket') {
+        escanearTicket();
+      }
+
+      if (value == 'mes') {
+        reiniciarMes();
+      }
+
+      if (value == 'todo') {
+        confirmarReinicioTotal();
+      }
+    },
             icon: const Icon(Icons.more_vert),
             itemBuilder: (context) => const [
+              PopupMenuItem<String>(value: 'tarjeta', child: Text('Agregar tarjeta')),
+              PopupMenuItem<String>(value: 'ticket', child: Text('Escanear ticket')),
               PopupMenuItem<String>(value: 'mes', child: Text('Reiniciar mes')),
               PopupMenuItem<String>(
                 value: 'todo',

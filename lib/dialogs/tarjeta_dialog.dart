@@ -113,6 +113,8 @@ Future<TarjetaCredito?> showNuevaTarjetaDialog(BuildContext context) {
                     limite <= 0 ||
                     saldoInicial < 0 ||
                     saldoInicial > limite ||
+                    saldoUltimoCorte < 0 ||
+                    saldoUltimoCorte > saldoInicial ||
                     diaCorte == null ||
                     diaPago == null ||
                     diaCorte < 1 ||

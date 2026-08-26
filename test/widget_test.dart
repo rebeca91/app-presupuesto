@@ -16,4 +16,15 @@ void main() {
     expect(find.text('Disponible'), findsOneWidget);
     expect(find.text('Categorías'), findsOneWidget);
   });
+
+  testWidgets('conserva las categorías iniciales cuando aún no hay datos', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+
+    await tester.pumpWidget(const BudgetApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Casa'), findsOneWidget);
+  });
 }

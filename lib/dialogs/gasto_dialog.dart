@@ -22,8 +22,11 @@ Future<GastoDialogResult?> showGastoDialog({
   required List<BudgetItem> categorias,
   required List<TarjetaCredito> tarjetas,
   bool permitirTarjeta = true,
+  double? montoInicial,
 }) {
-  final montoController = TextEditingController();
+  final montoController = TextEditingController(
+    text: montoInicial?.toStringAsFixed(2) ?? '',
+  );
   BudgetItem categoriaSeleccionada = categorias.first;
   String metodoPagoSeleccionado = 'Efectivo';
   TarjetaCredito? tarjetaSeleccionada = tarjetas.isNotEmpty

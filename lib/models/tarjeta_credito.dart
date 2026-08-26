@@ -46,16 +46,26 @@ class TarjetaCredito {
   }
 
   void registrarPago(double monto) {
-    if (monto <= 0) return;
+    if (monto <= 0 || saldoActual <= 0) return;
+    final pagoAplicado = monto.clamp(0, saldoActual).toDouble();
 
-    saldoUltimoCorte -= monto;
+    saldoUltimoCorte -= pagoAplicado;
     if (saldoUltimoCorte < 0) {
       saldoUltimoCorte = 0;
     }
 
-    saldoActual -= monto;
+    saldoActual -= pagoAplicado;
     if (saldoActual < 0) {
       saldoActual = 0;
+    }
+  }
+
+  /// Actualiza un saldo introducido manualmente sin dejar el último corte por
+  /// encima de la deuda total.
+  void ajustarSaldo(double nuevoSaldo) {
+    saldoActual = nuevoSaldo.clamp(0, limite).toDouble();
+    if (saldoUltimoCorte > saldoActual) {
+      saldoUltimoCorte = saldoActual;
     }
   }
 
@@ -80,7 +90,10 @@ class TarjetaCredito {
       nombre: map['nombre'],
       limite: (map['limite'] as num).toDouble(),
       saldoActual: saldoActual,
-      saldoUltimoCorte: _leerSaldoUltimoCorte(map, saldoActual),
+      saldoUltimoCorte: _leerSaldoUltimoCorte(
+        map,
+        saldoActual,
+      ).clamp(0, saldoActual).toDouble(),
       diaCorte: map['diaCorte'],
       diaPago: map['diaPago'],
       recordatoriosActivos: map['recordatoriosActivos'] as bool? ?? true,

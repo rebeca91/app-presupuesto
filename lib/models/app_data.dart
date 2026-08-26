@@ -11,6 +11,10 @@ class AppData {
   final List<ResumenMensual> historial;
   final List<Movimiento> movimientos;
 
+  /// Distingue un primer inicio de una lista de categorías que el usuario
+  /// decidió dejar vacía.
+  final bool tieneItemsGuardados;
+
   final double ingresoMensual;
   final double metaAhorro;
 
@@ -20,6 +24,7 @@ class AppData {
     required this.tarjetas,
     required this.historial,
     required this.movimientos,
+    required this.tieneItemsGuardados,
     required this.ingresoMensual,
     required this.metaAhorro,
   });

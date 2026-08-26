@@ -148,6 +148,7 @@ class StorageService {
       items: items,
       historial: historial,
       movimientos: movimientos,
+      tieneItemsGuardados: itemsTexto != null,
       ingresos: ingresos,
       tarjetas: tarjetas,
       ingresoMensual: ingresoMensual,

@@ -61,4 +61,37 @@ void main() {
       isTrue,
     );
   });
+
+  test('ajustar saldo conserva la consistencia con el último corte', () {
+    final tarjeta = TarjetaCredito(
+      nombre: 'BAC',
+      limite: 1000,
+      saldoActual: 300,
+      saldoUltimoCorte: 200,
+      diaCorte: 15,
+      diaPago: 25,
+    );
+
+    tarjeta.ajustarSaldo(120);
+
+    expect(tarjeta.saldoActual, 120);
+    expect(tarjeta.saldoUltimoCorte, 120);
+    expect(tarjeta.consumoNuevo, 0);
+  });
+
+  test('un pago nunca descuenta más que el saldo actual', () {
+    final tarjeta = TarjetaCredito(
+      nombre: 'BAC',
+      limite: 1000,
+      saldoActual: 100,
+      saldoUltimoCorte: 100,
+      diaCorte: 15,
+      diaPago: 25,
+    );
+
+    tarjeta.registrarPago(200);
+
+    expect(tarjeta.saldoActual, 0);
+    expect(tarjeta.saldoUltimoCorte, 0);
+  });
 }
